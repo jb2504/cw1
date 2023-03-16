@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>COVID-19 Outbreak Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  </head>
+  <body>
+    <svg id="chart"></svg>
+    <script>
+      // Load the data
+      d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.csv", function(error, data) {
+        if (error) {
+          console.log(error);
+          return;
+        }
+
+        // Filter the data for selected countries
+        var selected_countries = ["USA", "Brazil", "India", "Russia", "UK"];
+        var filtered_data = data.filter(function(d) {
+          return selected_countries.includes(d.iso_code);
+        });
+
+        // Group the data by location (country) and date
+        var grouped_data = d3.nest()
+          .key(function(d) { return d.location; })
+          .key(function(d) { return d.date; })
+          .rollup(function(v) { return d3.sum(v, function(d) { return d.new_cases; }); })
+          .entries(filtered_data);
+
+        // Define the chart dimensions
+        var margin = {top: 20, right: 20, bottom: 30, left: 40},
+            width = 960 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom;
+
+        // Create the scales
+        var x = d3.scale.ordinal()
+            .domain(grouped_data.map(function(d) { return d.key; }))
+            .rangeRoundBands([0, width], 0.7, 0.3);
+
+        var y = d3.scale.linear()
+            .domain([0, d3.max(grouped_data, function(d) { return d3.max(d.values, function(v) { return v.values; }); })])
+            .range([height, 0]);
+
+        // Create the chart elements
+        var chart = d3.select("#chart")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        chart.selectAll("line")
+            .data(grouped_data)
+          .enter().append("line")
+            .attr("x1", function(d) { return x(d.key) + x.rangeBand() / 2; })
+            .attr("x2", function(d) { return x(d.key) + x.rangeBand() / 2; })
+            .attr("y1", function(d) { return y(d3.min(d.values, function(v) { return v.values; })); })
+            .attr("y2", function(d) { return y(d3.max(d.values, function(v) { return v.values; })); })
+            .attr("stroke", "black")
+            .attr("stroke-width", 1)
+            .attr("fill", "none");
+
+        chart.selectAll("rect")
+            .data(grouped_data)
+          .enter().append("rect")
+           
+
+    .attr("x", function(d) { return x(d.key); })
+    .attr("y", function(d) { return y(d3.quantile(d.values, 0.25)); })
+    .attr("width", x.rangeBand())
+    .attr("height", function(d) { return y(d3.quantile(d.values, 0.75)) - y(d3.quantile(d.values, 0.25)); })
+    .attr("stroke", "black")
+    .attr("stroke-width", 1)
+    .attr("fill", "white");
+
+chart.selectAll("circle")
+    .data(grouped_data)
+  .enter().append("circle")
+  .attr("cx", function(d) { return x(d.key) + x.rangeBand() / 2; })
+  .attr("cy", function(d) { return y(d3.median(d.values)); })
+  .attr("r", 5)
+  .attr("stroke", "black")
+  .attr("stroke-width", 1)
+  .attr("fill", "red");
+// Add axis labels
+chart.append("g")
+.attr("class", "x axis")
+.attr("transform", "translate(0," + height + ")")
+.call(d3.svg.axis().scale(x).orient("bottom"));
+
+chart.append("g")
+.attr("class", "y axis")
+.call(d3.svg.axis().scale(y).orient("left"));
+
+// Append the chart to the HTML document
+var tooltip = d3.select("body")
+.append("div")
+.attr("class", "tooltip")
+.style("opacity", 0);
+
+});
+
+</script>
+</body>
+</html>
